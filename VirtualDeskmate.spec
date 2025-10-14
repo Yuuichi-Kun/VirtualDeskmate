@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('Dance-Evernight-Unscreen.gif', '.')],
+    datas=[('Icon.png', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
