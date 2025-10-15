@@ -1,5 +1,7 @@
 Virtual Deskmate (PyQt5)
 
+DISCLAIMER: THIS PROGRAM IS STILL IN EARLY-DEVELOPMENT!
+
 A lightweight desktop companion that floats on your screen as a translucent animated character. Includes a styled launcher with live GIF preview, tray controls, hotkeys, edge snapping, click‑through mode, and optional Start with Windows.
 
 Features
