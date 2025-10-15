@@ -166,6 +166,7 @@ class CharacterWidget(QWidget):
         CharacterWidget.action_hide = QAction('Hide')
         CharacterWidget.action_show_launcher = QAction('Show Launcher')
         CharacterWidget.action_quit = QAction('Quit')
+        CharacterWidget.action_chat = QAction('Open Chat')
 
         def _show_current():
             w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
@@ -201,6 +202,7 @@ class CharacterWidget(QWidget):
         CharacterWidget.tray_menu.addAction(CharacterWidget.action_show_launcher)
         CharacterWidget.tray_menu.addAction(CharacterWidget.action_startup)
         CharacterWidget.tray_menu.addSeparator()
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_chat)
         CharacterWidget.tray_menu.addAction(CharacterWidget.action_quit)
         CharacterWidget.tray_icon.setContextMenu(CharacterWidget.tray_menu)
 
@@ -214,6 +216,17 @@ class CharacterWidget(QWidget):
                         w.hide()
         CharacterWidget.tray_icon.activated.connect(on_tray_activated)
         CharacterWidget.tray_icon.show()
+
+        def _open_chat():
+            try:
+                from chat_window import ChatWindow
+            except Exception:
+                from .chat_window import ChatWindow  # type: ignore
+            l = CharacterWidget.launcher_ref() if CharacterWidget.launcher_ref else None
+            # Always open as a top-level window
+            w = ChatWindow()
+            w.show()
+        CharacterWidget.action_chat.triggered.connect(_open_chat)
 
     def _on_bob(self):
         self._bob_phase = (self._bob_phase + 1) % 120

@@ -35,4 +35,30 @@ class SettingsHelper:
     def set_lock_position(self, enabled: bool) -> None:
         self.settings.setValue('behavior/lockPosition', bool(enabled))
 
+    # --- Chat / OpenAI settings ---
+    def get_api_key(self) -> str:
+        key = self.settings.value('chat/apiKey', type=str)
+        return key or ''
+
+    def set_api_key(self, key: str) -> None:
+        self.settings.setValue('chat/apiKey', key or '')
+
+    def get_model(self) -> str:
+        return self.settings.value('chat/model', 'gpt-4o-mini', type=str)
+
+    def set_model(self, model: str) -> None:
+        self.settings.setValue('chat/model', model or 'gpt-4o-mini')
+
+    def get_persona(self) -> str:
+        return self.settings.value('chat/persona', 'You are a helpful, friendly desk companion.', type=str)
+
+    def set_persona(self, persona: str) -> None:
+        self.settings.setValue('chat/persona', persona or 'You are a helpful, friendly desk companion.')
+
+    def get_chat_name(self) -> str:
+        return self.settings.value('chat/name', 'DeskMate', type=str)
+
+    def set_chat_name(self, name: str) -> None:
+        self.settings.setValue('chat/name', name or 'DeskMate')
+
 
