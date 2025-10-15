@@ -27,11 +27,7 @@ class SettingsHelper:
         clamped = max(96, min(600, int(value)))
         self.settings.setValue('ui/size', clamped)
 
-    def get_click_through(self) -> bool:
-        return bool(self.settings.value('behavior/clickThrough', False, type=bool))
-
-    def set_click_through(self, enabled: bool) -> None:
-        self.settings.setValue('behavior/clickThrough', bool(enabled))
+    # Click-through settings removed
 
     def get_lock_position(self) -> bool:
         return bool(self.settings.value('behavior/lockPosition', False, type=bool))

@@ -60,8 +60,7 @@ class CharacterWidget(QWidget):
 
         self.old_pos = self.pos()
         self.drag_locked = self.settings_helper.get_lock_position()
-        self.click_through = self.settings_helper.get_click_through()
-        self.apply_click_through(self.click_through)
+        # Always allow interaction; click-through removed
         self.setWindowOpacity(self.settings_helper.get_opacity())
 
         self.idle_enabled = bool(self.settings_helper.settings.value('behavior/idleEnabled', False, type=bool))
@@ -77,18 +76,20 @@ class CharacterWidget(QWidget):
 
         self.shortcut_toggle_visibility = QShortcut(QKeySequence('Ctrl+Shift+H'), self)
         self.shortcut_toggle_visibility.activated.connect(self._toggle_visibility)
-        self.shortcut_toggle_click = QShortcut(QKeySequence('Ctrl+Shift+T'), self)
-        self.shortcut_toggle_click.activated.connect(lambda: self.set_click_through(not self.click_through))
+        # Click-through shortcut removed
         self.shortcut_cycle_size = QShortcut(QKeySequence('Ctrl+Shift+S'), self)
         self.shortcut_cycle_size.activated.connect(self._cycle_size)
 
+        # Ensure the system tray is initialized immediately so controls are available
+        self._ensure_tray_initialized()
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            if not self.drag_locked and not self.click_through:
+            if not self.drag_locked:
                 self.old_pos = event.globalPos()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and not self.drag_locked and not self.click_through:
+        if event.buttons() == Qt.LeftButton and not self.drag_locked:
             delta = QPoint(event.globalPos() - self.old_pos)
             new_x = self.x() + delta.x()
             new_y = self.y() + delta.y()
@@ -111,69 +112,8 @@ class CharacterWidget(QWidget):
                     self.move(avail.left(), self.y())
                 else:
                     self.move(avail.right() - self.width(), self.y())
-
-        if QSystemTrayIcon.isSystemTrayAvailable():
-            if CharacterWidget.tray_icon is None:
-                CharacterWidget.tray_icon = QSystemTrayIcon()
-                icon_path = resource_path('Icon.png')
-                icon = QIcon(icon_path) if os.path.exists(icon_path) else QApplication.style().standardIcon(QStyle.SP_ComputerIcon)
-                CharacterWidget.tray_icon.setIcon(icon)
-                self.setWindowIcon(icon)
-                CharacterWidget.tray_icon.setToolTip('VirtualDeskmate')
-
-                CharacterWidget.tray_menu = QMenu()
-                CharacterWidget.action_show = QAction('Show')
-                CharacterWidget.action_hide = QAction('Hide')
-                CharacterWidget.action_show_launcher = QAction('Show Launcher')
-                CharacterWidget.action_quit = QAction('Quit')
-
-                def _show_current():
-                    w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
-                    if w is not None:
-                        w.showNormal()
-
-                def _hide_current():
-                    w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
-                    if w is not None:
-                        w.hide()
-
-                def _show_launcher():
-                    l = CharacterWidget.launcher_ref() if CharacterWidget.launcher_ref else None
-                    if l is not None:
-                        l.show()
-                        l.raise_()
-                        l.activateWindow()
-
-                CharacterWidget.action_show.triggered.connect(_show_current)
-                CharacterWidget.action_hide.triggered.connect(_hide_current)
-                CharacterWidget.action_show_launcher.triggered.connect(_show_launcher)
-                CharacterWidget.action_quit.triggered.connect(QApplication.instance().quit)
-
-                CharacterWidget.action_startup = QAction('Start with Windows', self, checkable=True)
-                CharacterWidget.action_startup.setChecked(WindowsStartupManager.is_enabled())
-
-                def _toggle_startup(enabled):
-                    WindowsStartupManager.set_enabled(enabled)
-                CharacterWidget.action_startup.toggled.connect(_toggle_startup)
-
-                CharacterWidget.tray_menu.addAction(CharacterWidget.action_show)
-                CharacterWidget.tray_menu.addAction(CharacterWidget.action_hide)
-                CharacterWidget.tray_menu.addAction(CharacterWidget.action_show_launcher)
-                CharacterWidget.tray_menu.addAction(CharacterWidget.action_startup)
-                CharacterWidget.tray_menu.addSeparator()
-                CharacterWidget.tray_menu.addAction(CharacterWidget.action_quit)
-                CharacterWidget.tray_icon.setContextMenu(CharacterWidget.tray_menu)
-
-                def on_tray_activated(reason):
-                    if reason == QSystemTrayIcon.Trigger:
-                        w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
-                        if w is not None:
-                            if w.isHidden():
-                                w.showNormal()
-                            else:
-                                w.hide()
-                CharacterWidget.tray_icon.activated.connect(on_tray_activated)
-                CharacterWidget.tray_icon.show()
+        # Always ensure tray exists regardless of mouse interactions
+        self._ensure_tray_initialized()
 
     def wheelEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
@@ -204,8 +144,76 @@ class CharacterWidget(QWidget):
                 self.movie.setPaused(False)
         except Exception:
             pass
+        # Ensure tray is present when the widget is shown
+        self._ensure_tray_initialized()
         self._sync_tray_state()
         super().showEvent(event)
+
+    def _ensure_tray_initialized(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        if CharacterWidget.tray_icon is not None:
+            return
+        CharacterWidget.tray_icon = QSystemTrayIcon()
+        icon_path = resource_path('Icon.png')
+        icon = QIcon(icon_path) if os.path.exists(icon_path) else QApplication.style().standardIcon(QStyle.SP_ComputerIcon)
+        CharacterWidget.tray_icon.setIcon(icon)
+        self.setWindowIcon(icon)
+        CharacterWidget.tray_icon.setToolTip('VirtualDeskmate')
+
+        CharacterWidget.tray_menu = QMenu()
+        CharacterWidget.action_show = QAction('Show')
+        CharacterWidget.action_hide = QAction('Hide')
+        CharacterWidget.action_show_launcher = QAction('Show Launcher')
+        CharacterWidget.action_quit = QAction('Quit')
+
+        def _show_current():
+            w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
+            if w is not None:
+                w.showNormal()
+
+        def _hide_current():
+            w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
+            if w is not None:
+                w.hide()
+
+        def _show_launcher():
+            l = CharacterWidget.launcher_ref() if CharacterWidget.launcher_ref else None
+            if l is not None:
+                l.show()
+                l.raise_()
+                l.activateWindow()
+
+        CharacterWidget.action_show.triggered.connect(_show_current)
+        CharacterWidget.action_hide.triggered.connect(_hide_current)
+        CharacterWidget.action_show_launcher.triggered.connect(_show_launcher)
+        CharacterWidget.action_quit.triggered.connect(QApplication.instance().quit)
+
+        CharacterWidget.action_startup = QAction('Start with Windows', self, checkable=True)
+        CharacterWidget.action_startup.setChecked(WindowsStartupManager.is_enabled())
+
+        def _toggle_startup(enabled):
+            WindowsStartupManager.set_enabled(enabled)
+        CharacterWidget.action_startup.toggled.connect(_toggle_startup)
+
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_show)
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_hide)
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_show_launcher)
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_startup)
+        CharacterWidget.tray_menu.addSeparator()
+        CharacterWidget.tray_menu.addAction(CharacterWidget.action_quit)
+        CharacterWidget.tray_icon.setContextMenu(CharacterWidget.tray_menu)
+
+        def on_tray_activated(reason):
+            if reason == QSystemTrayIcon.Trigger:
+                w = CharacterWidget.current_ref() if CharacterWidget.current_ref else None
+                if w is not None:
+                    if w.isHidden():
+                        w.showNormal()
+                    else:
+                        w.hide()
+        CharacterWidget.tray_icon.activated.connect(on_tray_activated)
+        CharacterWidget.tray_icon.show()
 
     def _on_bob(self):
         self._bob_phase = (self._bob_phase + 1) % 120
@@ -250,10 +258,7 @@ class CharacterWidget(QWidget):
         act_lock.toggled.connect(self.set_lock_position)
         menu.addAction(act_lock)
 
-        act_click = QAction('Click-Through', self, checkable=True)
-        act_click.setChecked(self.click_through)
-        act_click.toggled.connect(self.set_click_through)
-        menu.addAction(act_click)
+        # Click-through removed
 
         act_idle = QAction('Idle Bobbing', self, checkable=True)
         act_idle.setChecked(self.idle_enabled)
@@ -282,11 +287,7 @@ class CharacterWidget(QWidget):
         self.settings_helper.set_lock_position(self.drag_locked)
         self._sync_tray_state()
 
-    def set_click_through(self, enabled: bool):
-        self.click_through = bool(enabled)
-        self.apply_click_through(self.click_through)
-        self.settings_helper.set_click_through(self.click_through)
-        self._sync_tray_state()
+    # Click-through removed
 
     def set_idle_enabled(self, enabled: bool):
         self.idle_enabled = bool(enabled)
@@ -298,21 +299,14 @@ class CharacterWidget(QWidget):
         else:
             self.bob_timer.stop()
 
-    def apply_click_through(self, enabled: bool):
-        try:
-            self.setWindowFlag(Qt.WindowTransparentForInput, enabled)
-            self.show()
-        except Exception as e:
-            logging.warning('Click-through not supported on this platform/Qt version: %s', e)
-            self.character_label.setAttribute(Qt.WA_TransparentForMouseEvents, enabled)
+    # Click-through removed
 
     def _sync_tray_state(self):
         if CharacterWidget.tray_icon is not None:
             state = []
             if self.drag_locked:
                 state.append('Locked')
-            if self.click_through:
-                state.append('Click-through')
+            # Click-through removed
             state.append(f"{int(self.windowOpacity()*100)}%")
             CharacterWidget.tray_icon.setToolTip('VirtualDeskmate - ' + ', '.join(state))
 
